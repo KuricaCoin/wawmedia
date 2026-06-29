@@ -29,7 +29,7 @@
         }
         .auth-logo { max-width:180px; margin-bottom:30px; }
         .auth-box h2 { text-align:center; margin-bottom:20px; font-weight:normal; }
-        .auth-box input, .auth-box .file-input {
+        .auth-box input {
             width:100%;
             padding:10px;
             margin-bottom:15px;
@@ -39,8 +39,21 @@
             background:#fff;
         }
         .auth-box input:focus { outline:none; border-color:#888; }
-        .auth-box .file-input { padding:6px; background:#fff; }
-        .auth-box .file-input input { border:none; padding:0; margin:0; width:100%; }
+        .auth-box .file-input {
+            width:100%;
+            margin-bottom:15px;
+            padding:6px;
+            border:2px solid #ccc;
+            background:#fff;
+        }
+        .auth-box .file-input input {
+            border:none;
+            padding:0;
+            margin:0;
+            width:100%;
+            font-size:14px;
+        }
+        .auth-box .file-input.hidden { display:none; }
         .auth-box button {
             width:100%;
             padding:12px;
@@ -61,8 +74,20 @@
         }
         .auth-box .switch:hover { color:#222; }
         .avatar-preview {
-            width:64px; height:64px; border-radius:50%; object-fit:cover;
-            border:2px solid #ccc; margin-bottom:15px;
+            width:64px;
+            height:64px;
+            border-radius:50%;
+            object-fit:cover;
+            border:2px solid #ccc;
+            margin-bottom:15px;
+        }
+        .avatar-preview.hidden { display:none; }
+        .error-msg {
+            color:#c0392b;
+            font-size:14px;
+            margin-bottom:10px;
+            display:none;
+            text-align:center;
         }
     </style>
 </head>
@@ -70,11 +95,13 @@
     <div class="auth-box" id="authBox">
         <img class="auth-logo" src="wawmedia.svg" alt="WAW">
         <h2 id="authTitle">Регистрация</h2>
+        <div id="errorMsg" class="error-msg"></div>
         <input type="text" id="username" placeholder="Имя пользователя">
-        <div class="file-input">
+        <input type="password" id="password" placeholder="Пароль">
+        <div class="file-input" id="fileInput">
             <input type="file" id="avatarFile" accept="image/*">
         </div>
-        <img id="avatarPreview" class="avatar-preview" src="" style="display:none;">
+        <img id="avatarPreview" class="avatar-preview hidden" src="">
         <button id="submitBtn">Создать аккаунт</button>
         <div class="switch" id="switchBtn">Уже есть аккаунт? Войти</div>
     </div>
@@ -98,6 +125,10 @@
         let isLogin = false;
         let avatarBase64 = '';
 
+        const errorMsg = document.getElementById('errorMsg');
+        const fileInput = document.getElementById('fileInput');
+        const avatarPreview = document.getElementById('avatarPreview');
+
         document.getElementById('avatarFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -111,9 +142,8 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, 64, 64);
                     avatarBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                    const preview = document.getElementById('avatarPreview');
-                    preview.src = avatarBase64;
-                    preview.style.display = 'block';
+                    avatarPreview.src = avatarBase64;
+                    avatarPreview.classList.remove('hidden');
                 };
                 img.src = e.target.result;
             };
@@ -125,38 +155,72 @@
             document.getElementById('authTitle').textContent = isLogin ? 'Вход' : 'Регистрация';
             document.getElementById('submitBtn').textContent = isLogin ? 'Войти' : 'Создать аккаунт';
             this.textContent = isLogin ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти';
-            document.getElementById('avatarFile').style.display = isLogin ? 'none' : 'block';
-            document.getElementById('avatarPreview').style.display = isLogin ? 'none' : 'block';
+            
+            if (isLogin) {
+                fileInput.classList.add('hidden');
+                avatarPreview.classList.add('hidden');
+            } else {
+                fileInput.classList.remove('hidden');
+                if (avatarBase64) {
+                    avatarPreview.classList.remove('hidden');
+                }
+            }
+            errorMsg.style.display = 'none';
         });
+
+        function showError(text) {
+            errorMsg.textContent = text;
+            errorMsg.style.display = 'block';
+            setTimeout(() => { errorMsg.style.display = 'none'; }, 4000);
+        }
 
         document.getElementById('submitBtn').addEventListener('click', function() {
             const username = document.getElementById('username').value.trim();
-            if (!username) { alert('Введите имя'); return; }
+            const password = document.getElementById('password').value.trim();
+            
+            if (!username) { showError('Введите имя пользователя'); return; }
+            if (!password) { showError('Введите пароль'); return; }
+            if (password.length < 4) { showError('Пароль должен быть не менее 4 символов'); return; }
 
             if (isLogin) {
+                // Вход
                 db.ref('users').orderByChild('name').equalTo(username).once('value').then(snap => {
                     let found = false;
                     snap.forEach(child => {
-                        found = true;
-                        localStorage.setItem('userId', child.key);
-                        window.location.href = 'index.html';
+                        const user = child.val();
+                        if (user.password === password) {
+                            found = true;
+                            localStorage.setItem('userId', child.key);
+                            window.location.href = 'index.html';
+                        }
                     });
-                    if (!found) alert('Пользователь не найден');
+                    if (!found) showError('Неверное имя или пароль');
                 });
             } else {
-                if (!avatarBase64) { alert('Выберите аватар'); return; }
-                const newUserRef = db.ref('users').push();
-                newUserRef.set({
-                    name: username,
-                    avatar: avatarBase64,
-                    createdAt: Date.now()
-                }).then(() => {
-                    localStorage.setItem('userId', newUserRef.key);
-                    window.location.href = 'index.html';
+                // Регистрация
+                if (!avatarBase64) { showError('Выберите аватар'); return; }
+                
+                // Проверяем, нет ли такого имени
+                db.ref('users').orderByChild('name').equalTo(username).once('value').then(snap => {
+                    if (snap.exists()) {
+                        showError('Пользователь с таким именем уже существует');
+                        return;
+                    }
+                    const newUserRef = db.ref('users').push();
+                    newUserRef.set({
+                        name: username,
+                        password: password,
+                        avatar: avatarBase64,
+                        createdAt: Date.now()
+                    }).then(() => {
+                        localStorage.setItem('userId', newUserRef.key);
+                        window.location.href = 'index.html';
+                    });
                 });
             }
         });
 
+        // Если уже залогинены - на главную
         if (localStorage.getItem('userId')) {
             window.location.href = 'index.html';
         }
