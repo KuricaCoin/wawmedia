@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>WAW Media</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:#fff; font-family:'BarboskinsAkzident', sans-serif; }
+        @font-face {
+            font-family:'BarboskinsAkzident';
+            src:url('barboskinsakzident.otf') format('opentype');
+        }
+        .header {
+            position:fixed; top:20px; left:20px; right:20px;
+            display:flex; align-items:center; gap:0; z-index:10;
+        }
+        .logo { max-width:140px; cursor:pointer; flex-shrink:0; }
+        .search-wrap {
+            flex:1; display:flex; align-items:center;
+            border:2px solid #ccc; background:#f9f9f9;
+            margin:0 15px; height:44px;
+        }
+        .search-wrap input {
+            font-family:'BarboskinsAkzident', sans-serif;
+            font-size:18px; padding:8px 14px; border:none; outline:none;
+            flex:1; background:transparent; height:100%;
+        }
+        .search-wrap button {
+            display:flex; align-items:center; justify-content:center;
+            padding:0 12px; border:none; background:transparent;
+            cursor:pointer; border-left:2px solid #ccc;
+            height:100%;
+        }
+        .search-wrap button img { display:block; width:28px; height:28px; }
+        .search-wrap button:hover { background:#eee; }
+        .user-btn {
+            flex-shrink:0; padding:0; background:transparent; border:none;
+            cursor:pointer; height:44px; display:flex; align-items:center;
+            line-height:1;
+        }
+        .user-avatar {
+            width:44px; height:44px; border-radius:50%; object-fit:cover;
+            border:2px solid #ccc; display:block;
+        }
+        .user-btn.login {
+            padding:0 18px; background:#222; color:#fff;
+            font-family:'BarboskinsAkzident', sans-serif;
+            font-size:16px; border-radius:0; transition:0.2s;
+        }
+        .user-btn.login:hover { background:#555; }
+        .content { margin-top:100px; padding:20px; }
+        .video-card { display:inline-block; cursor:pointer; }
+        .video-card img { display:block; width:320px; height:auto; border:1px solid #ddd; }
+        .video-card .title { font-size:18px; font-weight:bold; margin-top:8px; }
+        .video-card .subtitle { font-size:14px; color:#555; margin-top:2px; }
+        a { text-decoration:none; color:inherit; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="index.html"><img class="logo" src="wawmedia.svg" alt="WAW"></a>
+        <div class="search-wrap">
+            <input type="text" placeholder="Поиск...">
+            <button><img src="search.svg" alt="Search"></button>
+        </div>
+        <button class="user-btn login" id="userBtn" onclick="location.href='auth.html'">Войти</button>
+    </div>
+    <div class="content">
+        <a href="zvezda.html" class="video-card">
+            <img src="zvezda_prev.png" alt="Zvezda">
+            <div class="title">Ромашка</div>
+            <div class="subtitle">Роза Барбоскина</div>
+        </a>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBVFuffO5WUSL5ck1sDAZw8hGnAsYLxnz4",
+            authDomain: "cobann-13bfa.firebaseapp.com",
+            databaseURL: "https://cobann-13bfa-default-rtdb.firebaseio.com",
+            projectId: "cobann-13bfa",
+            storageBucket: "cobann-13bfa.firebasestorage.app",
+            messagingSenderId: "706581136006",
+            appId: "1:706581136006:web:e304a2643e84e3df6a8707",
+            measurementId: "G-HJ01VHYXF2"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const userBtn = document.getElementById('userBtn');
+        const userId = localStorage.getItem('userId');
+
+        if (userId) {
+            db.ref('users/' + userId).once('value').then(snap => {
+                const user = snap.val();
+                if (user) {
+                    userBtn.className = 'user-btn';
+                    userBtn.innerHTML = `<img src="${user.avatar}" class="user-avatar">`;
+                    userBtn.onclick = () => {
+                        if (confirm('Выйти?')) {
+                            localStorage.removeItem('userId');
+                            location.reload();
+                        }
+                    };
+                }
+            });
+        }
+    </script>
+</body>
+</html>

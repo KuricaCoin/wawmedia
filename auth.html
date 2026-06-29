@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Авторизация</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background:#fff;
+            font-family:'BarboskinsAkzident', sans-serif;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            min-height:100vh;
+        }
+        @font-face {
+            font-family:'BarboskinsAkzident';
+            src:url('barboskinsakzident.otf') format('opentype');
+        }
+        .auth-box {
+            width:400px;
+            padding:40px;
+            border:2px solid #ccc;
+            background:#f9f9f9;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+        }
+        .auth-logo { max-width:180px; margin-bottom:30px; }
+        .auth-box h2 { text-align:center; margin-bottom:20px; font-weight:normal; }
+        .auth-box input, .auth-box .file-input {
+            width:100%;
+            padding:10px;
+            margin-bottom:15px;
+            border:2px solid #ccc;
+            font-family:'BarboskinsAkzident', sans-serif;
+            font-size:16px;
+            background:#fff;
+        }
+        .auth-box input:focus { outline:none; border-color:#888; }
+        .auth-box .file-input { padding:6px; background:#fff; }
+        .auth-box .file-input input { border:none; padding:0; margin:0; width:100%; }
+        .auth-box button {
+            width:100%;
+            padding:12px;
+            background:#222;
+            color:#fff;
+            border:none;
+            cursor:pointer;
+            font-family:'BarboskinsAkzident', sans-serif;
+            font-size:18px;
+            transition:0.2s;
+        }
+        .auth-box button:hover { background:#555; }
+        .auth-box .switch {
+            text-align:center;
+            margin-top:15px;
+            color:#888;
+            cursor:pointer;
+        }
+        .auth-box .switch:hover { color:#222; }
+        .avatar-preview {
+            width:64px; height:64px; border-radius:50%; object-fit:cover;
+            border:2px solid #ccc; margin-bottom:15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-box" id="authBox">
+        <img class="auth-logo" src="wawmedia.svg" alt="WAW">
+        <h2 id="authTitle">Регистрация</h2>
+        <input type="text" id="username" placeholder="Имя пользователя">
+        <div class="file-input">
+            <input type="file" id="avatarFile" accept="image/*">
+        </div>
+        <img id="avatarPreview" class="avatar-preview" src="" style="display:none;">
+        <button id="submitBtn">Создать аккаунт</button>
+        <div class="switch" id="switchBtn">Уже есть аккаунт? Войти</div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBVFuffO5WUSL5ck1sDAZw8hGnAsYLxnz4",
+            authDomain: "cobann-13bfa.firebaseapp.com",
+            databaseURL: "https://cobann-13bfa-default-rtdb.firebaseio.com",
+            projectId: "cobann-13bfa",
+            storageBucket: "cobann-13bfa.firebasestorage.app",
+            messagingSenderId: "706581136006",
+            appId: "1:706581136006:web:e304a2643e84e3df6a8707",
+            measurementId: "G-HJ01VHYXF2"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let isLogin = false;
+        let avatarBase64 = '';
+
+        document.getElementById('avatarFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 64;
+                    canvas.height = 64;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, 64, 64);
+                    avatarBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                    const preview = document.getElementById('avatarPreview');
+                    preview.src = avatarBase64;
+                    preview.style.display = 'block';
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('switchBtn').addEventListener('click', function() {
+            isLogin = !isLogin;
+            document.getElementById('authTitle').textContent = isLogin ? 'Вход' : 'Регистрация';
+            document.getElementById('submitBtn').textContent = isLogin ? 'Войти' : 'Создать аккаунт';
+            this.textContent = isLogin ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти';
+            document.getElementById('avatarFile').style.display = isLogin ? 'none' : 'block';
+            document.getElementById('avatarPreview').style.display = isLogin ? 'none' : 'block';
+        });
+
+        document.getElementById('submitBtn').addEventListener('click', function() {
+            const username = document.getElementById('username').value.trim();
+            if (!username) { alert('Введите имя'); return; }
+
+            if (isLogin) {
+                db.ref('users').orderByChild('name').equalTo(username).once('value').then(snap => {
+                    let found = false;
+                    snap.forEach(child => {
+                        found = true;
+                        localStorage.setItem('userId', child.key);
+                        window.location.href = 'index.html';
+                    });
+                    if (!found) alert('Пользователь не найден');
+                });
+            } else {
+                if (!avatarBase64) { alert('Выберите аватар'); return; }
+                const newUserRef = db.ref('users').push();
+                newUserRef.set({
+                    name: username,
+                    avatar: avatarBase64,
+                    createdAt: Date.now()
+                }).then(() => {
+                    localStorage.setItem('userId', newUserRef.key);
+                    window.location.href = 'index.html';
+                });
+            }
+        });
+
+        if (localStorage.getItem('userId')) {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
