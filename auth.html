@@ -138,16 +138,20 @@
         const fileInput = document.getElementById('fileInput');
         const avatarPreview = document.getElementById('avatarPreview');
 
-        // ---- Проверка лимита регистраций ----
+        // айди
+        let deviceId = localStorage.getItem('deviceId');
+        if (!deviceId) {
+            deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+            localStorage.setItem('deviceId', deviceId);
+        }
+
+        // ывывываыва
         function checkRegistrationLimit() {
             return new Promise((resolve) => {
-                const deviceId = localStorage.getItem('deviceId') || 'device_' + Date.now();
-                if (!localStorage.getItem('deviceId')) {
-                    localStorage.setItem('deviceId', deviceId);
-                }
                 const now = Date.now();
-                const tenMinutesAgo = now - 600000; // 10 минут
+                const tenMinutesAgo = now - 600000;
 
+                // ываываыыавыв
                 db.ref('registrations/' + deviceId).orderByValue().startAt(tenMinutesAgo).once('value', snap => {
                     let count = 0;
                     snap.forEach(() => count++);
@@ -156,16 +160,8 @@
             });
         }
 
-        function registerDevice() {
-            const deviceId = localStorage.getItem('deviceId');
-            const ref = db.ref('registrations/' + deviceId).push();
-            return ref.set(Date.now());
-        }
-
         function getTimeLeft() {
             return new Promise((resolve) => {
-                const deviceId = localStorage.getItem('deviceId');
-                if (!deviceId) { resolve(0); return; }
                 const now = Date.now();
                 const tenMinutesAgo = now - 600000;
                 db.ref('registrations/' + deviceId).orderByValue().startAt(tenMinutesAgo).once('value', snap => {
@@ -179,6 +175,11 @@
                     resolve(Math.max(0, waitTime));
                 });
             });
+        }
+
+        function registerDevice() {
+            const ref = db.ref('registrations/' + deviceId).push();
+            return ref.set(Date.now());
         }
 
         document.getElementById('avatarFile').addEventListener('change', function(e) {
@@ -243,7 +244,7 @@
             if (password.length < 4) { showError('Пароль должен быть не менее 4 символов'); return; }
 
             if (isLogin) {
-                // Вход
+                // вход
                 db.ref('users').orderByChild('name').equalTo(username).once('value').then(snap => {
                     let found = false;
                     snap.forEach(child => {
@@ -257,7 +258,7 @@
                     if (!found) showError('Неверное имя или пароль');
                 });
             } else {
-                // Регистрация с проверкой лимита
+                // чтобы тут челы не накручивали мне дизлайков на видео
                 if (!avatarBase64) { showError('Выберите аватар'); return; }
                 
                 checkRegistrationLimit().then(ok => {
@@ -278,11 +279,13 @@
                             name: username,
                             password: password,
                             avatar: avatarBase64,
-                            createdAt: Date.now()
+                            createdAt: Date.now(),
+                            deviceId: deviceId // какое устройство
                         }).then(() => {
-                            registerDevice();
-                            localStorage.setItem('userId', newUserRef.key);
-                            window.location.href = 'index.html';
+                            registerDevice().then(() => {
+                                localStorage.setItem('userId', newUserRef.key);
+                                window.location.href = 'index.html';
+                            });
                         });
                     });
                 });
