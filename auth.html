@@ -109,7 +109,7 @@
         .banned-overlay {
             position:fixed;
             top:0; left:0; right:0; bottom:0;
-            background:rgba(0,0,0,0.92);
+            background:rgba(0,0,0,0.95);
             display:none;
             justify-content:center;
             align-items:center;
@@ -120,14 +120,16 @@
             padding:40px;
         }
         .banned-overlay.show { display:flex; }
-        .banned-overlay h1 { font-size:50px; color:#e74c3c; margin-bottom:20px; }
+        .banned-overlay .logo-big { max-width:200px; margin-bottom:30px; }
+        .banned-overlay h1 { font-size:44px; color:#e74c3c; margin-bottom:15px; font-weight:normal; }
         .banned-overlay p { font-size:20px; max-width:600px; color:#ccc; }
         .banned-overlay .sub { font-size:14px; color:#888; margin-top:15px; }
     </style>
 </head>
 <body>
     <div class="banned-overlay" id="bannedOverlay">
-        <h1>🚫 ДОСТУП ЗАБЛОКИРОВАН</h1>
+        <img class="logo-big" src="wawmedia.svg" alt="WAW Media">
+        <h1>ДОСТУП ЗАБЛОКИРОВАН</h1>
         <p>Ваше устройство заблокировано за нарушение правил платформы.</p>
         <p class="sub">Вы не можете создавать новые аккаунты.</p>
     </div>
@@ -179,7 +181,6 @@
             localStorage.setItem('deviceId', deviceId);
         }
 
-        // ---- ПРОВЕРКА БАНА ----
         function checkBan() {
             db.ref('banned/devices/' + deviceId).once('value', snap => {
                 if (snap.exists()) {
@@ -195,11 +196,10 @@
         }
         checkBan();
 
-        // ---- 30 МИНУТ МЕЖДУ АККАУНТАМИ ----
         function checkTimeBetweenAccounts() {
             return new Promise((resolve) => {
                 const now = Date.now();
-                const thirtyMinutesAgo = now - 1800000; // 30 минут
+                const thirtyMinutesAgo = now - 1800000;
 
                 db.ref('registrations/' + deviceId).orderByValue().startAt(thirtyMinutesAgo).once('value', snap => {
                     let lastTime = 0;
@@ -227,7 +227,6 @@
             return ref.set(Date.now());
         }
 
-        // ---- Остальные функции ----
         document.getElementById('avatarFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -278,7 +277,7 @@
         function showRateLimit(waitSeconds) {
             const minutes = Math.floor(waitSeconds / 60);
             const seconds = Math.round(waitSeconds % 60);
-            rateMsg.textContent = `⏳ Подождите ${minutes}м ${seconds}с перед созданием нового аккаунта (минимум 30 минут между аккаунтами)`;
+            rateMsg.textContent = 'Подождите ' + minutes + 'м ' + seconds + 'с перед созданием нового аккаунта (минимум 30 минут между аккаунтами)';
             rateMsg.style.display = 'block';
         }
 
@@ -291,7 +290,6 @@
             if (password.length < 4) { showError('Пароль должен быть не менее 4 символов'); return; }
 
             if (isLogin) {
-                // Вход
                 db.ref('users').orderByChild('name').equalTo(username).once('value').then(snap => {
                     let found = false;
                     snap.forEach(child => {
@@ -305,13 +303,9 @@
                     if (!found) showError('Неверное имя или пароль');
                 });
             } else {
-                // Регистрация
                 if (!avatarBase64) { showError('Выберите аватар'); return; }
 
-                // Проверяем бан
                 checkBan();
-
-                // Проверяем 30 минут между аккаунтами
                 checkTimeBetweenAccounts().then(result => {
                     if (!result.ok) {
                         showRateLimit(result.waitTime / 1000);
