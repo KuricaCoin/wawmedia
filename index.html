@@ -55,9 +55,32 @@
         .video-card .title { font-size:18px; font-weight:bold; margin-top:8px; }
         .video-card .subtitle { font-size:14px; color:#555; margin-top:2px; }
         a { text-decoration:none; color:inherit; }
+        .banned-overlay {
+            position:fixed;
+            top:0; left:0; right:0; bottom:0;
+            background:rgba(0,0,0,0.92);
+            display:none;
+            justify-content:center;
+            align-items:center;
+            z-index:9999;
+            flex-direction:column;
+            color:#fff;
+            text-align:center;
+            padding:40px;
+        }
+        .banned-overlay.show { display:flex; }
+        .banned-overlay h1 { font-size:50px; color:#e74c3c; margin-bottom:20px; }
+        .banned-overlay p { font-size:20px; max-width:600px; color:#ccc; }
+        .banned-overlay .sub { font-size:14px; color:#888; margin-top:15px; }
     </style>
 </head>
 <body>
+    <div class="banned-overlay" id="bannedOverlay">
+        <h1>🚫 ДОСТУП ЗАБЛОКИРОВАН</h1>
+        <p>Ваше устройство заблокировано за нарушение правил платформы.</p>
+        <p class="sub">Вы не можете просматривать контент или создавать новые аккаунты.</p>
+    </div>
+
     <div class="header">
         <a href="index.html"><img class="logo" src="wawmedia.svg" alt="WAW"></a>
         <div class="search-wrap">
@@ -73,6 +96,7 @@
             <div class="subtitle">Роза Барбоскина</div>
         </a>
     </div>
+
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script>
@@ -89,6 +113,32 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // ---- Получаем deviceId ----
+        let deviceId = localStorage.getItem('deviceId');
+        if (!deviceId) {
+            deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+            localStorage.setItem('deviceId', deviceId);
+        }
+
+        // ---- ПРОВЕРКА БАНА НА ВСЕХ СТРАНИЦАХ ----
+        function checkBanAndRedirect() {
+            db.ref('banned/devices/' + deviceId).once('value', snap => {
+                if (snap.exists()) {
+                    // Показываем бан
+                    document.getElementById('bannedOverlay').classList.add('show');
+                    // Блокируем все кнопки и ссылки
+                    document.querySelectorAll('button, a, .video-card').forEach(el => {
+                        el.style.pointerEvents = 'none';
+                        el.style.opacity = '0.3';
+                    });
+                    // Удаляем userId если есть
+                    localStorage.removeItem('userId');
+                }
+            });
+        }
+        checkBanAndRedirect();
+
+        // ---- Пользователь ----
         const userBtn = document.getElementById('userBtn');
         const userId = localStorage.getItem('userId');
 
@@ -107,6 +157,9 @@
                 }
             });
         }
+
+        // Проверяем бан каждые 10 секунд (на случай если забанили в админке)
+        setInterval(checkBanAndRedirect, 10000);
     </script>
 </body>
 </html>
