@@ -128,8 +128,8 @@
 <body>
     <div class="banned-overlay" id="bannedOverlay">
         <h1>🚫 ДОСТУП ЗАБЛОКИРОВАН</h1>
-        <p>Ваше устройство заблокировано за создание более 5 аккаунтов за 48 часов.</p>
-        <p class="sub">Нарушение правил платформы</p>
+        <p>Ваше устройство заблокировано за нарушение правил платформы.</p>
+        <p class="sub">Вы не можете создавать новые аккаунты.</p>
     </div>
 
     <div class="auth-box" id="authBox">
@@ -179,51 +179,45 @@
             localStorage.setItem('deviceId', deviceId);
         }
 
-        // ---- Проверка бана ----
+        // ---- ПРОВЕРКА БАНА ----
         function checkBan() {
-            return new Promise((resolve) => {
-                db.ref('banned/devices/' + deviceId).once('value', snap => {
-                    if (snap.exists()) {
-                        document.getElementById('bannedOverlay').classList.add('show');
-                        document.querySelectorAll('input, button').forEach(el => {
-                            el.disabled = true;
-                            el.style.opacity = '0.3';
-                        });
-                        resolve(true);
-                    } else {
-                        resolve(false);
-                    }
-                });
+            db.ref('banned/devices/' + deviceId).once('value', snap => {
+                if (snap.exists()) {
+                    document.getElementById('bannedOverlay').classList.add('show');
+                    document.querySelectorAll('input, button').forEach(el => {
+                        el.disabled = true;
+                        el.style.opacity = '0.3';
+                    });
+                    return true;
+                }
+                return false;
             });
         }
+        checkBan();
 
-        // ---- Проверка количества аккаунтов за 48 часов ----
-        function checkAccountLimit() {
+        // ---- 30 МИНУТ МЕЖДУ АККАУНТАМИ ----
+        function checkTimeBetweenAccounts() {
             return new Promise((resolve) => {
                 const now = Date.now();
-                const twoDaysAgo = now - 172800000; // 48 часов
+                const thirtyMinutesAgo = now - 1800000; // 30 минут
 
-                db.ref('registrations/' + deviceId).orderByValue().startAt(twoDaysAgo).once('value', snap => {
-                    let count = 0;
-                    snap.forEach(() => count++);
-                    resolve(count);
-                });
-            });
-        }
-
-        function getTimeLeftForWarning() {
-            return new Promise((resolve) => {
-                const now = Date.now();
-                const twoDaysAgo = now - 172800000;
-                db.ref('registrations/' + deviceId).orderByValue().startAt(twoDaysAgo).once('value', snap => {
-                    let oldest = now;
+                db.ref('registrations/' + deviceId).orderByValue().startAt(thirtyMinutesAgo).once('value', snap => {
+                    let lastTime = 0;
                     snap.forEach(child => {
                         const val = child.val();
-                        if (val < oldest) oldest = val;
+                        if (val > lastTime) lastTime = val;
                     });
-                    if (oldest === now) { resolve(0); return; }
-                    const waitTime = 172800000 - (now - oldest);
-                    resolve(Math.max(0, waitTime));
+                    if (lastTime === 0) {
+                        resolve({ ok: true, waitTime: 0 });
+                        return;
+                    }
+                    const timePassed = now - lastTime;
+                    if (timePassed < 1800000) {
+                        const waitTime = 1800000 - timePassed;
+                        resolve({ ok: false, waitTime: waitTime });
+                    } else {
+                        resolve({ ok: true, waitTime: 0 });
+                    }
                 });
             });
         }
@@ -233,9 +227,7 @@
             return ref.set(Date.now());
         }
 
-        // ---- Загрузка - проверяем бан ----
-        checkBan();
-
+        // ---- Остальные функции ----
         document.getElementById('avatarFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -280,16 +272,13 @@
         function showError(text) {
             errorMsg.textContent = text;
             errorMsg.style.display = 'block';
-            setTimeout(() => { errorMsg.style.display = 'none'; }, 4000);
+            setTimeout(() => { errorMsg.style.display = 'none'; }, 5000);
         }
 
-        function showWarning(text) {
-            warnMsg.textContent = '⚠️ ' + text;
-            warnMsg.style.display = 'block';
-        }
-
-        function showRateLimit(text) {
-            rateMsg.textContent = '⛔ ' + text;
+        function showRateLimit(waitSeconds) {
+            const minutes = Math.floor(waitSeconds / 60);
+            const seconds = Math.round(waitSeconds % 60);
+            rateMsg.textContent = `⏳ Подождите ${minutes}м ${seconds}с перед созданием нового аккаунта (минимум 30 минут между аккаунтами)`;
             rateMsg.style.display = 'block';
         }
 
@@ -320,50 +309,32 @@
                 if (!avatarBase64) { showError('Выберите аватар'); return; }
 
                 // Проверяем бан
-                checkBan().then(isBanned => {
-                    if (isBanned) return;
+                checkBan();
 
-                    checkAccountLimit().then(count => {
-                        if (count >= 5) {
-                            // Бан!
-                            db.ref('banned/devices/' + deviceId).set({
-                                reason: 'Создано более 5 аккаунтов за 48 часов',
-                                timestamp: Date.now(),
-                                accountCount: count
-                            });
-                            document.getElementById('bannedOverlay').classList.add('show');
-                            document.querySelectorAll('input, button').forEach(el => {
-                                el.disabled = true;
-                                el.style.opacity = '0.3';
-                            });
+                // Проверяем 30 минут между аккаунтами
+                checkTimeBetweenAccounts().then(result => {
+                    if (!result.ok) {
+                        showRateLimit(result.waitTime / 1000);
+                        return;
+                    }
+
+                    db.ref('users').orderByChild('name').equalTo(username).once('value').then(snap => {
+                        if (snap.exists()) {
+                            showError('Пользователь с таким именем уже существует');
                             return;
                         }
 
-                        if (count >= 3) {
-                            // Предупреждение
-                            const hoursLeft = Math.floor((172800000 - (Date.now() - 172800000)) / 3600000);
-                            showWarning(`⚠️ Внимание! Вы уже создали ${count} аккаунта за 48 часов. При создании 5-го аккаунта ваше устройство будет забанено. Осталось аккаунтов до бана: ${5 - count}`);
-                        }
-
-                        // Проверяем, не существует ли такое имя
-                        db.ref('users').orderByChild('name').equalTo(username).once('value').then(snap => {
-                            if (snap.exists()) {
-                                showError('Пользователь с таким именем уже существует');
-                                return;
-                            }
-
-                            const newUserRef = db.ref('users').push();
-                            newUserRef.set({
-                                name: username,
-                                password: password,
-                                avatar: avatarBase64,
-                                createdAt: Date.now(),
-                                deviceId: deviceId
-                            }).then(() => {
-                                registerDevice().then(() => {
-                                    localStorage.setItem('userId', newUserRef.key);
-                                    window.location.href = 'index.html';
-                                });
+                        const newUserRef = db.ref('users').push();
+                        newUserRef.set({
+                            name: username,
+                            password: password,
+                            avatar: avatarBase64,
+                            createdAt: Date.now(),
+                            deviceId: deviceId
+                        }).then(() => {
+                            registerDevice().then(() => {
+                                localStorage.setItem('userId', newUserRef.key);
+                                window.location.href = 'index.html';
                             });
                         });
                     });
