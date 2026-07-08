@@ -49,12 +49,41 @@
             font-size:16px; border-radius:0; transition:0.2s;
         }
         .user-btn.login:hover { background:#555; }
-        .content { margin-top:100px; padding:20px; }
-        .video-card { display:inline-block; cursor:pointer; }
-        .video-card img { display:block; width:320px; height:auto; border:1px solid #ddd; }
-        .video-card .title { font-size:18px; font-weight:bold; margin-top:8px; }
-        .video-card .subtitle { font-size:14px; color:#555; margin-top:2px; }
-        a { text-decoration:none; color:inherit; }
+        .content {
+            margin-top:100px;
+            padding:20px;
+        }
+        .video-grid {
+            display:grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap:30px;
+            max-width:1200px;
+        }
+        .video-card {
+            display:block;
+            cursor:pointer;
+            text-decoration:none;
+            color:inherit;
+        }
+        .video-card img {
+            display:block;
+            width:100%;
+            height:auto;
+            aspect-ratio:16/9;
+            object-fit:cover;
+            border:1px solid #ddd;
+            background:#f5f5f5;
+        }
+        .video-card .title {
+            font-size:18px;
+            font-weight:bold;
+            margin-top:8px;
+        }
+        .video-card .subtitle {
+            font-size:14px;
+            color:#555;
+            margin-top:2px;
+        }
         .banned-overlay {
             position:fixed;
             top:0; left:0; right:0; bottom:0;
@@ -91,12 +120,33 @@
         </div>
         <button class="user-btn login" id="userBtn" onclick="location.href='auth.html'">Войти</button>
     </div>
+
     <div class="content">
-        <a href="zvezda.html" class="video-card">
-            <img src="zvezda_prev.png" alt="Zvezda">
-            <div class="title">Ромашка</div>
-            <div class="subtitle">Роза Барбоскина</div>
-        </a>
+        <div class="video-grid">
+            <a href="zvezda.html" class="video-card">
+                <img src="zvezda_prev.png" alt="Zvezda">
+                <div class="title">Ромашка</div>
+                <div class="subtitle">Роза Барбоскина</div>
+            </a>
+
+            <a href="repa.html" class="video-card">
+                <img src="repa_prev.png" alt="Repa">
+                <div class="title">Репа однолетняя</div>
+                <div class="subtitle">Барбоскины</div>
+            </a>
+
+            <a href="sestry.html" class="video-card">
+                <img src="sestry_prev.png" alt="Sestry">
+                <div class="title">Новости нашего огорода</div>
+                <div class="subtitle">Барбоскины</div>
+            </a>
+
+            <a href="dryzhok.html" class="video-card">
+                <img src="dryzhok_prev.png" alt="Dryzhok">
+                <div class="title">Как бить пенальти</div>
+                <div class="subtitle">Барбоскины</div>
+            </a>
+        </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -144,7 +194,7 @@
                 const user = snap.val();
                 if (user) {
                     userBtn.className = 'user-btn';
-                    userBtn.innerHTML = `<img src="${user.avatar}" class="user-avatar">`;
+                    userBtn.innerHTML = '<img src="' + user.avatar + '" class="user-avatar">';
                     userBtn.onclick = () => {
                         if (confirm('Выйти?')) {
                             localStorage.removeItem('userId');
