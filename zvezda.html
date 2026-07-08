@@ -332,7 +332,7 @@
                 const user = snap.val();
                 if (user) {
                     userBtn.className = 'user-btn';
-                    userBtn.innerHTML = `<img src="${user.avatar}" class="user-avatar">`;
+                    userBtn.innerHTML = '<img src="' + user.avatar + '" class="user-avatar">';
                     userBtn.onclick = () => {
                         if (confirm('Выйти?')) {
                             localStorage.removeItem('userId');
@@ -371,6 +371,7 @@
             return dd + '.' + mm + '.' + yyyy + ' ' + hh + ':' + mi;
         }
 
+        // ---- Голосование за комментарии с ЗАЩИТОЙ (1 голос на пользователя) ----
         function renderComment(commentId, comment, userId) {
             const div = document.createElement('div');
             div.className = 'comment';
@@ -417,6 +418,7 @@
             div.appendChild(time);
             div.appendChild(actions);
 
+            // Подписываемся на обновления
             db.ref('comments/' + commentId + '/likes').on('value', snap => {
                 likeCount.textContent = snap.val() || 0;
             });
@@ -424,41 +426,60 @@
                 dislikeCount.textContent = snap.val() || 0;
             });
 
-            likeImg.addEventListener('click', (e) => {
+            // ---- ЗАЩИТА ОТ НАКРУТКИ: 1 голос на пользователя ----
+            likeImg.addEventListener('click', function(e) {
                 e.stopPropagation();
                 if (!userId) { alert('Войдите чтобы голосовать'); return; }
+
                 const ref = db.ref('comments/' + commentId);
-                db.ref('comments/' + commentId + '/votes/' + userId).once('value').then(snap => {
+                const voteRef = db.ref('comments/' + commentId + '/votes/' + userId);
+
+                voteRef.once('value').then(snap => {
                     const currentVote = snap.val();
+
+                    // Если уже лайк — ничего не делаем
                     if (currentVote === 'like') return;
-                    ref.transaction((data) => {
-                        if (!data) data = { likes:0, dislikes:0, votes:{} };
+
+                    // Транзакция для атомарного обновления
+                    ref.transaction(function(data) {
+                        if (!data) data = { likes: 0, dislikes: 0, votes: {} };
+                        
+                        // Если был дизлайк — откатываем
                         if (currentVote === 'dislike') {
                             data.dislikes = (data.dislikes || 1) - 1;
                         }
+                        
+                        // Добавляем лайк
                         data.likes = (data.likes || 0) + 1;
                         data.votes = data.votes || {};
-                        data.votes[userId] = Date.now();
+                        data.votes[userId] = 'like';
                         return data;
                     });
                 });
             });
 
-            dislikeImg.addEventListener('click', (e) => {
+            dislikeImg.addEventListener('click', function(e) {
                 e.stopPropagation();
                 if (!userId) { alert('Войдите чтобы голосовать'); return; }
+
                 const ref = db.ref('comments/' + commentId);
-                db.ref('comments/' + commentId + '/votes/' + userId).once('value').then(snap => {
+                const voteRef = db.ref('comments/' + commentId + '/votes/' + userId);
+
+                voteRef.once('value').then(snap => {
                     const currentVote = snap.val();
+
                     if (currentVote === 'dislike') return;
-                    ref.transaction((data) => {
-                        if (!data) data = { likes:0, dislikes:0, votes:{} };
+
+                    ref.transaction(function(data) {
+                        if (!data) data = { likes: 0, dislikes: 0, votes: {} };
+                        
                         if (currentVote === 'like') {
                             data.likes = (data.likes || 1) - 1;
                         }
+                        
                         data.dislikes = (data.dislikes || 0) + 1;
                         data.votes = data.votes || {};
-                        data.votes[userId] = Date.now();
+                        data.votes[userId] = 'dislike';
                         return data;
                     });
                 });
@@ -519,7 +540,7 @@
             });
         });
 
-        // ---- Video likes/dislikes ----
+        // ---- Video likes/dislikes (тоже с защитой) ----
         const likeBtn = document.getElementById('likeBtn');
         const dislikeBtn = document.getElementById('dislikeBtn');
         const likeBar = document.getElementById('likeBar');
@@ -568,10 +589,13 @@
         function castVote(type) {
             if (!userId) { alert('Войдите чтобы голосовать'); return; }
             const ref = db.ref('videoStats/zvezda');
-            db.ref('videoStats/zvezda/votes/' + userId).once('value').then(snap => {
+            const voteRef = db.ref('videoStats/zvezda/votes/' + userId);
+
+            voteRef.once('value').then(snap => {
                 const currentVote = snap.val();
                 if (currentVote === type) return;
-                ref.transaction((data) => {
+
+                ref.transaction(function(data) {
                     if (!data) data = { likes:0, dislikes:0, votes:{} };
                     if (currentVote === 'like') data.likes = (data.likes || 1) - 1;
                     if (currentVote === 'dislike') data.dislikes = (data.dislikes || 1) - 1;
@@ -584,8 +608,8 @@
             });
         }
 
-        likeBtn.addEventListener('click', () => castVote('like'));
-        dislikeBtn.addEventListener('click', () => castVote('dislike'));
+        likeBtn.addEventListener('click', function() { castVote('like'); });
+        dislikeBtn.addEventListener('click', function() { castVote('dislike'); });
     </script>
 </body>
 </html>
