@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Репа однолетняя | WAW Media</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background:#fff;
+            font-family:'BarboskinsAkzident', sans-serif;
+            padding-bottom:40px;
+        }
+        @font-face {
+            font-family:'BarboskinsAkzident';
+            src:url('barboskinsakzident.otf') format('opentype');
+        }
+        .header {
+            position:fixed; top:20px; left:20px; right:20px;
+            display:flex; align-items:center; gap:0; z-index:10;
+        }
+        .logo { max-width:140px; cursor:pointer; flex-shrink:0; }
+        .search-wrap {
+            flex:1; display:flex; align-items:center;
+            border:2px solid #ccc; background:#f9f9f9;
+            margin:0 15px; height:44px;
+        }
+        .search-wrap input {
+            font-family:'BarboskinsAkzident', sans-serif;
+            font-size:18px; padding:8px 14px; border:none; outline:none;
+            flex:1; background:transparent; height:100%;
+        }
+        .search-wrap button {
+            display:flex; align-items:center; justify-content:center;
+            padding:0 12px; border:none; background:transparent;
+            cursor:pointer; border-left:2px solid #ccc;
+            height:100%;
+        }
+        .search-wrap button img { display:block; width:28px; height:28px; }
+        .search-wrap button:hover { background:#eee; }
+        .user-btn {
+            flex-shrink:0; padding:0; background:transparent; border:none;
+            cursor:pointer; height:44px; display:flex; align-items:center;
+            line-height:1;
+        }
+        .user-avatar {
+            width:44px; height:44px; border-radius:50%; object-fit:cover;
+            border:2px solid #ccc; display:block;
+        }
+        .user-btn.login {
+            padding:0 18px; background:#222; color:#fff;
+            font-family:'BarboskinsAkzident', sans-serif;
+            font-size:16px; border-radius:0; transition:0.2s;
+        }
+        .user-btn.login:hover { background:#555; }
+        .main {
+            margin-top:100px;
+            padding:20px;
+            display:flex;
+            flex-direction:column;
+        }
+        .video-row {
+            display:flex;
+            gap:60px;
+            align-items:flex-start;
+            flex-wrap:wrap;
+        }
+        .video-container video {
+            width:640px;
+            max-width:70vw;
+            border:1px solid #ccc;
+            display:block;
+        }
+        .stats {
+            display:flex;
+            flex-direction:column;
+            gap:10px;
+            min-width:200px;
+            flex:1;
+            align-items:center;
+        }
+        .stat-label {
+            font-size:32px;
+            font-weight:bold;
+            color:#e6b800;
+            letter-spacing:6px;
+            text-align:center;
+        }
+        .bars-container {
+            display:flex;
+            gap:30px;
+            width:100%;
+            justify-content:center;
+        }
+        .bar-wrapper {
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            flex:1;
+            max-width:120px;
+        }
+        .bar-bg {
+            width:100%;
+            height:300px;
+            background:#ccc;
+            display:flex;
+            flex-direction:column-reverse;
+            border:3px solid #888;
+        }
+        .bar-fill {
+            width:100%;
+            background:#4caf50;
+            transition:none;
+            min-height:2px;
+        }
+        .stat-icons {
+            display:flex;
+            gap:50px;
+            margin-top:5px;
+            cursor:pointer;
+        }
+        .stat-icons img {
+            width:56px;
+            height:56px;
+            display:block;
+            transition:transform 0.1s;
+        }
+        .stat-icons img:hover { transform:scale(1.05); }
+        .stat-icons img:active { transform:scale(0.95); }
+        .counts {
+            display:flex;
+            gap:60px;
+            margin-top:2px;
+            font-size:20px;
+            color:#888;
+        }
+        .count-item { text-align:center; min-width:40px; }
+        .comments-section {
+            margin-top:40px;
+            width:100%;
+            max-width:800px;
+        }
+        .comments-section h3 {
+            font-weight:normal;
+            font-size:20px;
+            margin-bottom:10px;
+        }
+        .comment-input {
+            display:flex;
+            gap:10px;
+            margin-bottom:15px;
+        }
+        .comment-input input {
+            flex:1;
+            padding:8px 14px;
+            border:2px solid #ccc;
+            font-family:'BarboskinsAkzident', sans-serif;
+            font-size:16px;
+            background:#f9f9f9;
+        }
+        .comment-input input:focus { outline:none; border-color:#888; }
+        .comment-input button {
+            padding:8px 20px;
+            background:#222;
+            color:#fff;
+            border:none;
+            cursor:pointer;
+            font-family:'BarboskinsAkzident', sans-serif;
+            font-size:16px;
+        }
+        .comment-input button:hover { background:#555; }
+        .comment {
+            padding:10px 0;
+            border-bottom:1px solid #eee;
+            display:flex;
+            align-items:center;
+            gap:12px;
+            flex-wrap:wrap;
+        }
+        .comment .avatar {
+            width:36px; height:36px; border-radius:50%; object-fit:cover;
+            flex-shrink:0;
+        }
+        .comment .name { font-weight:bold; font-size:14px; }
+        .comment .text { font-size:14px; color:#333; }
+        .comment .time { font-size:12px; color:#888; margin-left:auto; }
+        .comment-actions {
+            display:flex;
+            align-items:center;
+            gap:8px;
+            margin-left:10px;
+        }
+        .comment-actions img {
+            width:20px; height:20px; cursor:pointer;
+            opacity:0.6; transition:0.1s;
+        }
+        .comment-actions img:hover { opacity:1; transform:scale(1.1); }
+        .comment-actions img:active { transform:scale(0.9); }
+        .comment-actions .count {
+            font-size:14px;
+            color:#555;
+            min-width:20px;
+            text-align:center;
+        }
+        .comment-actions .sep { color:#ccc; margin:0 2px; }
+        .rate-limit-msg {
+            color:#c0392b;
+            font-size:14px;
+            margin-top:5px;
+            display:none;
+        }
+        .banned-overlay {
+            position:fixed;
+            top:0; left:0; right:0; bottom:0;
+            background:rgba(0,0,0,0.95);
+            display:none;
+            justify-content:center;
+            align-items:center;
+            z-index:9999;
+            flex-direction:column;
+            color:#fff;
+            text-align:center;
+            padding:40px;
+        }
+        .banned-overlay.show { display:flex; }
+        .banned-overlay .logo-big { max-width:200px; margin-bottom:30px; }
+        .banned-overlay h1 { font-size:44px; color:#e74c3c; margin-bottom:15px; font-weight:normal; }
+        .banned-overlay p { font-size:20px; max-width:600px; color:#ccc; }
+        .banned-overlay .sub { font-size:14px; color:#888; margin-top:15px; }
+    </style>
+</head>
+<body>
+    <div class="banned-overlay" id="bannedOverlay">
+        <img class="logo-big" src="wawmedia.svg" alt="WAW Media">
+        <h1>ДОСТУП ЗАБЛОКИРОВАН</h1>
+        <p>Ваше устройство заблокировано за нарушение правил платформы.</p>
+        <p class="sub">Вы не можете просматривать контент или создавать новые аккаунты.</p>
+    </div>
+
+    <div class="header">
+        <a href="index.html"><img class="logo" src="wawmedia.svg" alt="WAW"></a>
+        <div class="search-wrap">
+            <input type="text" placeholder="Поиск...">
+            <button><img src="search.svg" alt="Search"></button>
+        </div>
+        <button class="user-btn login" id="userBtn" onclick="location.href='auth.html'">Войти</button>
+    </div>
+
+    <div class="main">
+        <div class="video-row">
+            <div class="video-container">
+                <video src="repa.mp4" controls autoplay></video>
+            </div>
+            <div class="stats">
+                <div class="stat-label" id="percentDisplay">0% 0%</div>
+                <div class="bars-container">
+                    <div class="bar-wrapper">
+                        <div class="bar-bg">
+                            <div class="bar-fill" id="likeBar" style="height:0%"></div>
+                        </div>
+                    </div>
+                    <div class="bar-wrapper">
+                        <div class="bar-bg">
+                            <div class="bar-fill" id="dislikeBar" style="height:0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-icons">
+                    <img src="like.svg" alt="Like" id="likeBtn">
+                    <img src="dislike.svg" alt="Dislike" id="dislikeBtn">
+                </div>
+                <div class="counts">
+                    <div class="count-item" id="likeCount">0</div>
+                    <div class="count-item" id="dislikeCount">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="comments-section">
+            <h3>Комментарии</h3>
+            <div class="comment-input">
+                <input type="text" id="commentInput" placeholder="Написать комментарий...">
+                <button id="sendComment">Отправить</button>
+            </div>
+            <div id="rateLimitMsg" class="rate-limit-msg">Вы можете оставить не более 3 комментариев в минуту</div>
+            <div id="commentsList"></div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBVFuffO5WUSL5ck1sDAZw8hGnAsYLxnz4",
+            authDomain: "cobann-13bfa.firebaseapp.com",
+            databaseURL: "https://cobann-13bfa-default-rtdb.firebaseio.com",
+            projectId: "cobann-13bfa",
+            storageBucket: "cobann-13bfa.firebasestorage.app",
+            messagingSenderId: "706581136006",
+            appId: "1:706581136006:web:e304a2643e84e3df6a8707",
+            measurementId: "G-HJ01VHYXF2"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const commentsPath = 'comments_repa';
+        const videoStatsPath = 'videoStats_repa';
+
+        let deviceId = localStorage.getItem('deviceId');
+        if (!deviceId) {
+            deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+            localStorage.setItem('deviceId', deviceId);
+        }
+
+        function checkBanAndRedirect() {
+            db.ref('banned/devices/' + deviceId).once('value', snap => {
+                if (snap.exists()) {
+                    document.getElementById('bannedOverlay').classList.add('show');
+                    document.querySelectorAll('button, a, .stat-icons img, .comment-actions img, .video-container').forEach(el => {
+                        el.style.pointerEvents = 'none';
+                        el.style.opacity = '0.3';
+                    });
+                    localStorage.removeItem('userId');
+                }
+            });
+        }
+        checkBanAndRedirect();
+        setInterval(checkBanAndRedirect, 10000);
+
+        const userBtn = document.getElementById('userBtn');
+        const userId = localStorage.getItem('userId');
+
+        if (userId) {
+            db.ref('users/' + userId).once('value').then(snap => {
+                const user = snap.val();
+                if (user) {
+                    userBtn.className = 'user-btn';
+                    userBtn.innerHTML = '<img src="' + user.avatar + '" class="user-avatar">';
+                    userBtn.onclick = () => {
+                        if (confirm('Выйти?')) {
+                            localStorage.removeItem('userId');
+                            location.reload();
+                        }
+                    };
+                }
+            });
+        }
+
+        function canPostComment(userId) {
+            return new Promise((resolve) => {
+                const now = Date.now();
+                const minuteAgo = now - 60000;
+                db.ref('commentRate/' + userId).orderByValue().startAt(minuteAgo).once('value', snap => {
+                    let count = 0;
+                    snap.forEach(() => count++);
+                    resolve(count < 3);
+                });
+            });
+        }
+
+        function registerComment(userId) {
+            const ref = db.ref('commentRate/' + userId).push();
+            return ref.set(Date.now());
+        }
+
+        function formatDate(timestamp) {
+            const d = new Date(timestamp);
+            const dd = String(d.getDate()).padStart(2,'0');
+            const mm = String(d.getMonth()+1).padStart(2,'0');
+            const yyyy = d.getFullYear();
+            const hh = String(d.getHours()).padStart(2,'0');
+            const mi = String(d.getMinutes()).padStart(2,'0');
+            return dd + '.' + mm + '.' + yyyy + ' ' + hh + ':' + mi;
+        }
+
+        function renderComment(commentId, comment, userId) {
+            const div = document.createElement('div');
+            div.className = 'comment';
+            div.dataset.id = commentId;
+
+            const avatar = document.createElement('img');
+            avatar.className = 'avatar';
+            avatar.src = comment.avatar || 'avatar1.png';
+
+            const info = document.createElement('div');
+            info.innerHTML = '<span class="name">' + comment.name + '</span> <span class="text">' + comment.text + '</span>';
+
+            const time = document.createElement('span');
+            time.className = 'time';
+            time.textContent = formatDate(comment.timestamp);
+
+            const actions = document.createElement('div');
+            actions.className = 'comment-actions';
+
+            const likeImg = document.createElement('img');
+            likeImg.src = 'like.svg';
+            likeImg.alt = 'like';
+            const likeCount = document.createElement('span');
+            likeCount.className = 'count';
+            likeCount.id = 'likeCount_' + commentId;
+            const sep = document.createElement('span');
+            sep.className = 'sep';
+            sep.textContent = '|';
+            const dislikeImg = document.createElement('img');
+            dislikeImg.src = 'dislike.svg';
+            dislikeImg.alt = 'dislike';
+            const dislikeCount = document.createElement('span');
+            dislikeCount.className = 'count';
+            dislikeCount.id = 'dislikeCount_' + commentId;
+
+            actions.appendChild(likeImg);
+            actions.appendChild(likeCount);
+            actions.appendChild(sep);
+            actions.appendChild(dislikeImg);
+            actions.appendChild(dislikeCount);
+
+            div.appendChild(avatar);
+            div.appendChild(info);
+            div.appendChild(time);
+            div.appendChild(actions);
+
+            db.ref(commentsPath + '/' + commentId + '/likes').on('value', snap => {
+                likeCount.textContent = snap.val() || 0;
+            });
+            db.ref(commentsPath + '/' + commentId + '/dislikes').on('value', snap => {
+                dislikeCount.textContent = snap.val() || 0;
+            });
+
+            likeImg.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (!userId) { alert('Войдите чтобы голосовать'); return; }
+                const ref = db.ref(commentsPath + '/' + commentId);
+                const voteRef = db.ref(commentsPath + '/' + commentId + '/votes/' + userId);
+                voteRef.once('value').then(snap => {
+                    const currentVote = snap.val();
+                    if (currentVote === 'like') return;
+                    ref.transaction(function(data) {
+                        if (!data) data = { likes: 0, dislikes: 0, votes: {} };
+                        if (currentVote === 'dislike') {
+                            data.dislikes = (data.dislikes || 1) - 1;
+                        }
+                        data.likes = (data.likes || 0) + 1;
+                        data.votes = data.votes || {};
+                        data.votes[userId] = 'like';
+                        return data;
+                    });
+                });
+            });
+
+            dislikeImg.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (!userId) { alert('Войдите чтобы голосовать'); return; }
+                const ref = db.ref(commentsPath + '/' + commentId);
+                const voteRef = db.ref(commentsPath + '/' + commentId + '/votes/' + userId);
+                voteRef.once('value').then(snap => {
+                    const currentVote = snap.val();
+                    if (currentVote === 'dislike') return;
+                    ref.transaction(function(data) {
+                        if (!data) data = { likes: 0, dislikes: 0, votes: {} };
+                        if (currentVote === 'like') {
+                            data.likes = (data.likes || 1) - 1;
+                        }
+                        data.dislikes = (data.dislikes || 0) + 1;
+                        data.votes = data.votes || {};
+                        data.votes[userId] = 'dislike';
+                        return data;
+                    });
+                });
+            });
+
+            return div;
+        }
+
+        function loadComments() {
+            db.ref(commentsPath).orderByChild('timestamp').on('value', snap => {
+                const list = document.getElementById('commentsList');
+                list.innerHTML = '';
+                const items = [];
+                snap.forEach(child => {
+                    items.push({ id: child.key, data: child.val() });
+                });
+                items.sort((a, b) => b.data.timestamp - a.data.timestamp);
+                for (let item of items) {
+                    const el = renderComment(item.id, item.data, userId);
+                    list.appendChild(el);
+                }
+            });
+        }
+        loadComments();
+
+        document.getElementById('sendComment').addEventListener('click', function() {
+            const input = document.getElementById('commentInput');
+            const text = input.value.trim();
+            if (!text) return;
+            if (!userId) { alert('Войдите чтобы оставить комментарий'); return; }
+
+            const msg = document.getElementById('rateLimitMsg');
+            canPostComment(userId).then(ok => {
+                if (!ok) {
+                    msg.style.display = 'block';
+                    setTimeout(() => msg.style.display = 'none', 3000);
+                    return;
+                }
+                msg.style.display = 'none';
+                db.ref('users/' + userId).once('value').then(snap => {
+                    const user = snap.val();
+                    if (user) {
+                        const newRef = db.ref(commentsPath).push();
+                        newRef.set({
+                            name: user.name || 'Аноним',
+                            avatar: user.avatar || 'avatar1.png',
+                            text: text,
+                            timestamp: Date.now(),
+                            likes: 0,
+                            dislikes: 0,
+                            votes: {}
+                        }).then(() => {
+                            registerComment(userId);
+                            input.value = '';
+                        });
+                    }
+                });
+            });
+        });
+
+        const likeBtn = document.getElementById('likeBtn');
+        const dislikeBtn = document.getElementById('dislikeBtn');
+        const likeBar = document.getElementById('likeBar');
+        const dislikeBar = document.getElementById('dislikeBar');
+        const likeCount = document.getElementById('likeCount');
+        const dislikeCount = document.getElementById('dislikeCount');
+        const percentDisplay = document.getElementById('percentDisplay');
+
+        let currentLikes = 0;
+        let currentDislikes = 0;
+
+        function updateUI(likes, dislikes) {
+            const total = likes + dislikes;
+            let likePercent = 0, dislikePercent = 0;
+            if (total > 0) {
+                likePercent = Math.round((likes / total) * 100);
+                dislikePercent = Math.round((dislikes / total) * 100);
+                if (likePercent + dislikePercent !== 100) {
+                    dislikePercent = 100 - likePercent;
+                }
+            }
+            likeBar.style.height = likePercent + '%';
+            dislikeBar.style.height = dislikePercent + '%';
+            percentDisplay.textContent = likePercent + '% ' + dislikePercent + '%';
+            likeCount.textContent = likes;
+            dislikeCount.textContent = dislikes;
+        }
+
+        function loadStats() {
+            db.ref(videoStatsPath).on('value', snap => {
+                const data = snap.val();
+                if (data) {
+                    currentLikes = data.likes || 0;
+                    currentDislikes = data.dislikes || 0;
+                    updateUI(currentLikes, currentDislikes);
+                } else {
+                    db.ref(videoStatsPath).set({ likes:0, dislikes:0, votes:{} });
+                    currentLikes = 0;
+                    currentDislikes = 0;
+                    updateUI(0,0);
+                }
+            });
+        }
+        loadStats();
+
+        function castVote(type) {
+            if (!userId) { alert('Войдите чтобы голосовать'); return; }
+            const ref = db.ref(videoStatsPath);
+            const voteRef = db.ref(videoStatsPath + '/votes/' + userId);
+            voteRef.once('value').then(snap => {
+                const currentVote = snap.val();
+                if (currentVote === type) return;
+                ref.transaction(function(data) {
+                    if (!data) data = { likes:0, dislikes:0, votes:{} };
+                    if (currentVote === 'like') data.likes = (data.likes || 1) - 1;
+                    if (currentVote === 'dislike') data.dislikes = (data.dislikes || 1) - 1;
+                    if (type === 'like') data.likes = (data.likes || 0) + 1;
+                    if (type === 'dislike') data.dislikes = (data.dislikes || 0) + 1;
+                    data.votes = data.votes || {};
+                    data.votes[userId] = type;
+                    return data;
+                });
+            });
+        }
+
+        likeBtn.addEventListener('click', function() { castVote('like'); });
+        dislikeBtn.addEventListener('click', function() { castVote('dislike'); });
+    </script>
+</body>
+</html>
