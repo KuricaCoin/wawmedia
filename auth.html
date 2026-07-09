@@ -181,6 +181,16 @@
             localStorage.setItem('deviceId', deviceId);
         }
 
+        // хэш пароля
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // проверка на бан
         function checkBan() {
             db.ref('banned/devices/' + deviceId).once('value', snap => {
                 if (snap.exists()) {
@@ -196,6 +206,7 @@
         }
         checkBan();
 
+        // задержка от накрутки
         function checkTimeBetweenAccounts() {
             return new Promise((resolve) => {
                 const now = Date.now();
@@ -227,6 +238,7 @@
             return ref.set(Date.now());
         }
 
+        // остальная хрень 
         document.getElementById('avatarFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -281,7 +293,7 @@
             rateMsg.style.display = 'block';
         }
 
-        document.getElementById('submitBtn').addEventListener('click', function() {
+        document.getElementById('submitBtn').addEventListener('click', async function() {
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
             
@@ -289,12 +301,17 @@
             if (!password) { showError('Введите пароль'); return; }
             if (password.length < 4) { showError('Пароль должен быть не менее 4 символов'); return; }
 
+            // вот
+            const hashedPassword = await hashPassword(password);
+
             if (isLogin) {
+                // сравниваем
                 db.ref('users').orderByChild('name').equalTo(username).once('value').then(snap => {
                     let found = false;
                     snap.forEach(child => {
                         const user = child.val();
-                        if (user.password === password) {
+                        // сравниваем 2
+                        if (user.password === hashedPassword) {
                             found = true;
                             localStorage.setItem('userId', child.key);
                             window.location.href = 'index.html';
@@ -303,6 +320,7 @@
                     if (!found) showError('Неверное имя или пароль');
                 });
             } else {
+                // рег
                 if (!avatarBase64) { showError('Выберите аватар'); return; }
 
                 checkBan();
@@ -321,7 +339,7 @@
                         const newUserRef = db.ref('users').push();
                         newUserRef.set({
                             name: username,
-                            password: password,
+                            password: hashedPassword, // сохранить
                             avatar: avatarBase64,
                             createdAt: Date.now(),
                             deviceId: deviceId
