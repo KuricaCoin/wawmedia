@@ -323,21 +323,27 @@
         const commentsPath = 'comments_repa';
         const videoStatsPath = 'videoStats_repa';
 
-        // ---- СПИСОК ВЕРИФИЦИРОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ ----
-        const verifiedUsers = [
-            '-P-UOGgF4_CNA2YHo1-c',
-            'device_1782807725769'
-        ];
-
-        function isVerified(userId, deviceId) {
-            if (!userId && !deviceId) return false;
-            return verifiedUsers.some(id => id === userId || id === deviceId);
-        }
-
         let deviceId = localStorage.getItem('deviceId');
         if (!deviceId) {
             deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
             localStorage.setItem('deviceId', deviceId);
+        }
+
+        const adminCache = {};
+
+        function checkIsAdmin(userId) {
+            return new Promise((resolve) => {
+                if (!userId) { resolve(false); return; }
+                if (adminCache[userId] !== undefined) {
+                    resolve(adminCache[userId]);
+                    return;
+                }
+                db.ref('users/' + userId + '/is_admin').once('value').then(snap => {
+                    const isAdmin = snap.val() === true;
+                    adminCache[userId] = isAdmin;
+                    resolve(isAdmin);
+                });
+            });
         }
 
         function checkBanAndRedirect() {
@@ -411,19 +417,19 @@
             avatar.src = comment.avatar || 'avatar1.png';
 
             const commentUserId = comment.userId || null;
-            const commentDeviceId = comment.deviceId || null;
-            const verified = isVerified(commentUserId, commentDeviceId);
 
             const nameWrapper = document.createElement('span');
             nameWrapper.className = 'name';
             nameWrapper.textContent = comment.name || 'Аноним';
 
-            if (verified) {
-                const verifiedIcon = document.createElement('span');
-                verifiedIcon.className = 'verified';
-                verifiedIcon.innerHTML = '<img src="verif.svg" alt="verified">';
-                nameWrapper.appendChild(verifiedIcon);
-            }
+            checkIsAdmin(commentUserId).then(isAdmin => {
+                if (isAdmin) {
+                    const verifiedIcon = document.createElement('span');
+                    verifiedIcon.className = 'verified';
+                    verifiedIcon.innerHTML = '<img src="verif.svg" alt="verified">';
+                    nameWrapper.appendChild(verifiedIcon);
+                }
+            });
 
             const info = document.createElement('div');
             info.appendChild(nameWrapper);
