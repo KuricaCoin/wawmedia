@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Звезда | WAW Media</title>
+    <title>Ромашка | WAW Media</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
@@ -181,7 +181,24 @@
             width:36px; height:36px; border-radius:50%; object-fit:cover;
             flex-shrink:0;
         }
-        .comment .name { font-weight:bold; font-size:14px; }
+        .comment .name {
+            font-weight:bold;
+            font-size:14px;
+            display:flex;
+            align-items:center;
+            gap:6px;
+        }
+        .comment .name .verified {
+            display:inline-block;
+            width:18px;
+            height:18px;
+            flex-shrink:0;
+        }
+        .comment .name .verified img {
+            width:100%;
+            height:100%;
+            display:block;
+        }
         .comment .text { font-size:14px; color:#333; }
         .comment .time { font-size:12px; color:#888; margin-left:auto; }
         .comment-actions {
@@ -303,6 +320,20 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        const commentsPath = 'comments';
+        const videoStatsPath = 'videoStats/zvezda';
+
+        // ---- СПИСОК ВЕРИФИЦИРОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ ----
+        const verifiedUsers = [
+            '-P-UOGgF4_CNA2YHo1-c',
+            'device_1782807725769'
+        ];
+
+        function isVerified(userId, deviceId) {
+            if (!userId && !deviceId) return false;
+            return verifiedUsers.some(id => id === userId || id === deviceId);
+        }
+
         let deviceId = localStorage.getItem('deviceId');
         if (!deviceId) {
             deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
@@ -343,7 +374,6 @@
             });
         }
 
-        // ---- Rate limiting for comments ----
         function canPostComment(userId) {
             return new Promise((resolve) => {
                 const now = Date.now();
@@ -371,7 +401,6 @@
             return dd + '.' + mm + '.' + yyyy + ' ' + hh + ':' + mi;
         }
 
-        // ---- Голосование за комментарии с ЗАЩИТОЙ (1 голос на пользователя) ----
         function renderComment(commentId, comment, userId) {
             const div = document.createElement('div');
             div.className = 'comment';
@@ -381,8 +410,29 @@
             avatar.className = 'avatar';
             avatar.src = comment.avatar || 'avatar1.png';
 
+            // Проверка верификации
+            const commentUserId = comment.userId || null;
+            const commentDeviceId = comment.deviceId || null;
+            const verified = isVerified(commentUserId, commentDeviceId);
+
+            const nameWrapper = document.createElement('span');
+            nameWrapper.className = 'name';
+            nameWrapper.textContent = comment.name || 'Аноним';
+
+            if (verified) {
+                const verifiedIcon = document.createElement('span');
+                verifiedIcon.className = 'verified';
+                verifiedIcon.innerHTML = '<img src="verif.svg" alt="verified">';
+                nameWrapper.appendChild(verifiedIcon);
+            }
+
             const info = document.createElement('div');
-            info.innerHTML = '<span class="name">' + comment.name + '</span> <span class="text">' + comment.text + '</span>';
+            info.appendChild(nameWrapper);
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'text';
+            textSpan.textContent = ' ' + (comment.text || '');
+            info.appendChild(textSpan);
 
             const time = document.createElement('span');
             time.className = 'time';
@@ -418,38 +468,26 @@
             div.appendChild(time);
             div.appendChild(actions);
 
-            // Подписываемся на обновления
-            db.ref('comments/' + commentId + '/likes').on('value', snap => {
+            db.ref(commentsPath + '/' + commentId + '/likes').on('value', snap => {
                 likeCount.textContent = snap.val() || 0;
             });
-            db.ref('comments/' + commentId + '/dislikes').on('value', snap => {
+            db.ref(commentsPath + '/' + commentId + '/dislikes').on('value', snap => {
                 dislikeCount.textContent = snap.val() || 0;
             });
 
-            // ---- ЗАЩИТА ОТ НАКРУТКИ: 1 голос на пользователя ----
             likeImg.addEventListener('click', function(e) {
                 e.stopPropagation();
                 if (!userId) { alert('Войдите чтобы голосовать'); return; }
-
-                const ref = db.ref('comments/' + commentId);
-                const voteRef = db.ref('comments/' + commentId + '/votes/' + userId);
-
+                const ref = db.ref(commentsPath + '/' + commentId);
+                const voteRef = db.ref(commentsPath + '/' + commentId + '/votes/' + userId);
                 voteRef.once('value').then(snap => {
                     const currentVote = snap.val();
-
-                    // Если уже лайк — ничего не делаем
                     if (currentVote === 'like') return;
-
-                    // Транзакция для атомарного обновления
                     ref.transaction(function(data) {
                         if (!data) data = { likes: 0, dislikes: 0, votes: {} };
-                        
-                        // Если был дизлайк — откатываем
                         if (currentVote === 'dislike') {
                             data.dislikes = (data.dislikes || 1) - 1;
                         }
-                        
-                        // Добавляем лайк
                         data.likes = (data.likes || 0) + 1;
                         data.votes = data.votes || {};
                         data.votes[userId] = 'like';
@@ -461,22 +499,16 @@
             dislikeImg.addEventListener('click', function(e) {
                 e.stopPropagation();
                 if (!userId) { alert('Войдите чтобы голосовать'); return; }
-
-                const ref = db.ref('comments/' + commentId);
-                const voteRef = db.ref('comments/' + commentId + '/votes/' + userId);
-
+                const ref = db.ref(commentsPath + '/' + commentId);
+                const voteRef = db.ref(commentsPath + '/' + commentId + '/votes/' + userId);
                 voteRef.once('value').then(snap => {
                     const currentVote = snap.val();
-
                     if (currentVote === 'dislike') return;
-
                     ref.transaction(function(data) {
                         if (!data) data = { likes: 0, dislikes: 0, votes: {} };
-                        
                         if (currentVote === 'like') {
                             data.likes = (data.likes || 1) - 1;
                         }
-                        
                         data.dislikes = (data.dislikes || 0) + 1;
                         data.votes = data.votes || {};
                         data.votes[userId] = 'dislike';
@@ -489,7 +521,7 @@
         }
 
         function loadComments() {
-            db.ref('comments').orderByChild('timestamp').on('value', snap => {
+            db.ref(commentsPath).orderByChild('timestamp').on('value', snap => {
                 const list = document.getElementById('commentsList');
                 list.innerHTML = '';
                 const items = [];
@@ -522,7 +554,7 @@
                 db.ref('users/' + userId).once('value').then(snap => {
                     const user = snap.val();
                     if (user) {
-                        const newRef = db.ref('comments').push();
+                        const newRef = db.ref(commentsPath).push();
                         newRef.set({
                             name: user.name || 'Аноним',
                             avatar: user.avatar || 'avatar1.png',
@@ -530,7 +562,9 @@
                             timestamp: Date.now(),
                             likes: 0,
                             dislikes: 0,
-                            votes: {}
+                            votes: {},
+                            userId: userId,
+                            deviceId: deviceId
                         }).then(() => {
                             registerComment(userId);
                             input.value = '';
@@ -540,7 +574,6 @@
             });
         });
 
-        // ---- Video likes/dislikes (тоже с защитой) ----
         const likeBtn = document.getElementById('likeBtn');
         const dislikeBtn = document.getElementById('dislikeBtn');
         const likeBar = document.getElementById('likeBar');
@@ -570,14 +603,14 @@
         }
 
         function loadStats() {
-            db.ref('videoStats/zvezda').on('value', snap => {
+            db.ref(videoStatsPath).on('value', snap => {
                 const data = snap.val();
                 if (data) {
                     currentLikes = data.likes || 0;
                     currentDislikes = data.dislikes || 0;
                     updateUI(currentLikes, currentDislikes);
                 } else {
-                    db.ref('videoStats/zvezda').set({ likes:0, dislikes:0, votes:{} });
+                    db.ref(videoStatsPath).set({ likes:0, dislikes:0, votes:{} });
                     currentLikes = 0;
                     currentDislikes = 0;
                     updateUI(0,0);
@@ -588,13 +621,11 @@
 
         function castVote(type) {
             if (!userId) { alert('Войдите чтобы голосовать'); return; }
-            const ref = db.ref('videoStats/zvezda');
-            const voteRef = db.ref('videoStats/zvezda/votes/' + userId);
-
+            const ref = db.ref(videoStatsPath);
+            const voteRef = db.ref(videoStatsPath + '/votes/' + userId);
             voteRef.once('value').then(snap => {
                 const currentVote = snap.val();
                 if (currentVote === type) return;
-
                 ref.transaction(function(data) {
                     if (!data) data = { likes:0, dislikes:0, votes:{} };
                     if (currentVote === 'like') data.likes = (data.likes || 1) - 1;
