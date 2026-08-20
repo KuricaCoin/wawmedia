@@ -181,7 +181,24 @@
             width:36px; height:36px; border-radius:50%; object-fit:cover;
             flex-shrink:0;
         }
-        .comment .name { font-weight:bold; font-size:14px; }
+        .comment .name {
+            font-weight:bold;
+            font-size:14px;
+            display:flex;
+            align-items:center;
+            gap:6px;
+        }
+        .comment .name .verified {
+            display:inline-block;
+            width:18px;
+            height:18px;
+            flex-shrink:0;
+        }
+        .comment .name .verified img {
+            width:100%;
+            height:100%;
+            display:block;
+        }
         .comment .text { font-size:14px; color:#333; }
         .comment .time { font-size:12px; color:#888; margin-left:auto; }
         .comment-actions {
@@ -306,6 +323,17 @@
         const commentsPath = 'comments_repa';
         const videoStatsPath = 'videoStats_repa';
 
+        // ---- СПИСОК ВЕРИФИЦИРОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ ----
+        const verifiedUsers = [
+            '-P-UOGgF4_CNA2YHo1-c',
+            'device_1782807725769'
+        ];
+
+        function isVerified(userId, deviceId) {
+            if (!userId && !deviceId) return false;
+            return verifiedUsers.some(id => id === userId || id === deviceId);
+        }
+
         let deviceId = localStorage.getItem('deviceId');
         if (!deviceId) {
             deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
@@ -382,8 +410,28 @@
             avatar.className = 'avatar';
             avatar.src = comment.avatar || 'avatar1.png';
 
+            const commentUserId = comment.userId || null;
+            const commentDeviceId = comment.deviceId || null;
+            const verified = isVerified(commentUserId, commentDeviceId);
+
+            const nameWrapper = document.createElement('span');
+            nameWrapper.className = 'name';
+            nameWrapper.textContent = comment.name || 'Аноним';
+
+            if (verified) {
+                const verifiedIcon = document.createElement('span');
+                verifiedIcon.className = 'verified';
+                verifiedIcon.innerHTML = '<img src="verif.svg" alt="verified">';
+                nameWrapper.appendChild(verifiedIcon);
+            }
+
             const info = document.createElement('div');
-            info.innerHTML = '<span class="name">' + comment.name + '</span> <span class="text">' + comment.text + '</span>';
+            info.appendChild(nameWrapper);
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'text';
+            textSpan.textContent = ' ' + (comment.text || '');
+            info.appendChild(textSpan);
 
             const time = document.createElement('span');
             time.className = 'time';
@@ -513,7 +561,9 @@
                             timestamp: Date.now(),
                             likes: 0,
                             dislikes: 0,
-                            votes: {}
+                            votes: {},
+                            userId: userId,
+                            deviceId: deviceId
                         }).then(() => {
                             registerComment(userId);
                             input.value = '';
